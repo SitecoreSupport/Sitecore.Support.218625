@@ -15,6 +15,8 @@
 
   internal class CloudSearchIndexSchemaBuilder : ICloudSearchIndexSchemaBuilder2
   {
+    const string ContentField = "content__";
+
     private readonly IDictionary<string, IndexedField> fields;
 
     private ICloudSearchTypeMapper typeMap;
@@ -27,7 +29,7 @@
     static CloudSearchIndexSchemaBuilder()
     {
       var csAzureAssembly = typeof(Sitecore.ContentSearch.Azure.CloudSearchProviderIndex).Assembly;
-      var cloudSearchIndexSchemaType = csAzureAssembly.GetType("Sitecore.ContentSearch.Azure.Schema.CloudSearchIndexSchema");
+      cloudSearchIndexSchemaType = csAzureAssembly.GetType("Sitecore.ContentSearch.Azure.Schema.CloudSearchIndexSchema");
 
       Assert.IsNotNull(cloudSearchIndexSchemaType, "cloudSearchIndexSchemaType != null");
     }
@@ -131,9 +133,22 @@
       }
       var isKey = fieldName.Equals(CloudSearchConfig.VirtualFields.CloudUniqueId);
       var isSearchable = cloudType == "Edm.String" || cloudType == "Collection(Edm.String)";
-      // TODO replace hardcode with configuration setting.
-      var isRetrievable = fieldName != "content__";
-      return new IndexedField(fieldName, cloudType, isKey, isSearchable, isRetrievable) { Analyzer = config?.CloudAnalyzer };
+
+      IndexedField indexedField = null;
+
+      if (fieldName == ContentField)
+      {
+        indexedField = new ExtendedIndexedField(fieldName, cloudType, key: false,
+          searchable: isSearchable, retrievable: false, sortable: false, facetable: false, filterable: false);
+      }
+      else
+      {
+        indexedField = new IndexedField(fieldName, cloudType, isKey, isSearchable, retrievable: true);
+      }
+
+      indexedField.Analyzer = config?.CloudAnalyzer;
+
+      return indexedField;
     }
 
     public void Reset()
